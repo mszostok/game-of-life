@@ -1,0 +1,63 @@
+unit appMode;
+
+{$mode objfpc}{$H+}
+
+interface
+
+uses
+  Crt,Classes, SysUtils,getFile,MyType,iface;
+
+procedure normalGameMode(var LGames: TLGames);
+procedure batchMode(var LGames: TLGames);
+
+implementation
+
+procedure normalGameMode(var LGames: TLGames);
+var
+   err:word;
+begin
+ LGames.config:='Data\config.ini';
+ err:=getConfig(LGames,LGames.config);
+ if err <> 0 then showErr(LGames,err);
+
+end;
+
+{ Funkcja przypisuje zmiennym loadPath, dirName, iteration
+ wartosci parametrow uruchomieniowych jakie podal uzytkownik.
+ Funkcja zwraca nastepujace wartosci typu integer:
+ 0 – jesli zakonczyła sie pomyslnie
+ 1 – jesli uzytkownik podal bledną wartość iteracji
+ 2 – jesli uzytkownik uzyl blednej flagi
+W wywołaniu podajemy zmienna rekordową gry.
+}
+function assignParam(var LGames: TLGames):integer;
+var
+i:integer;
+flag:string;
+begin
+for i := 0 to ((ParamCount div 2)-1) do
+begin
+  flag:=ParamStr((2*i)+1); //flagi zawsze znajduja sie na nieparzystych miejsach (program.exe -i [wartosc] -p [wartosc] itd.)
+  case LowerCase(flag) of
+    '-c': LGames.config:=ParamStr((2*i)+2);
+    else  begin
+    Result:=2; break;
+    end;
+  end;
+Result:=0;
+end;
+end;
+
+procedure batchMode(var LGames: TLGames);
+var
+  err:word;
+begin
+   err:=assignParam(LGames);
+     if err <> 0 then showErr(LGames,err);
+
+   err:=getConfig(LGames,LGames.config);
+     if err <> 0 then showErr(LGames,err);
+end;
+
+end.
+

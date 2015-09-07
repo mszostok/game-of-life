@@ -1,0 +1,67 @@
+unit MyType;
+
+{$mode objfpc}{$H+}
+
+interface
+
+uses
+  Classes, SysUtils;
+
+type
+
+  TGenArray =  array of array of Boolean;
+  TErrArray = array of string;
+  PTLGen = ^TLGen;
+  PTGen = ^TGen;
+  PTGame = ^TGame;
+  PTRunGame = ^TRunGame;
+
+  TRunGame = record
+  game: PTGame;
+  next : PTRunGame;
+  end;
+
+  TLRunGames = record
+  head: PTRunGame;
+  count: integer;
+  end;
+
+  TGen = record
+    GenArray: TGenArray;
+    next: PTGen;
+    prev: PTGen;
+  end;
+
+  TLGen = record
+  head: PTGen;
+  tail: PTGen;
+  count: integer;
+  Height:integer; //wyskosc plansz
+  Width:integer; // szerokosc planszy
+  end;
+
+  TGame = record
+  fps: word;
+  fpsPoint:word;
+  pattern:string;
+  pause: boolean;
+  TLGen: PTLGen;
+  next: PTGame;
+  prev: PTGame;
+  end;
+
+  TLGames = record
+  head: PTGame;
+  tail: PTGame;
+  LRunGames: TLRunGames;
+  count: integer;
+  sizeX: integer;
+  sizeY: integer;
+  config: string;
+  ErrArray: TErrArray;
+  end;
+
+implementation
+
+end.
+

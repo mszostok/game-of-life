@@ -1,0 +1,132 @@
+unit FileOperation;
+
+{$mode objfpc}{$H+}
+
+interface
+
+uses
+  Classes, SysUtils, MyType;
+function loadGeneration(TLGen : PTLGen; path:string): boolean;
+procedure getConfig(var LGames: TLGames;path:string);
+
+
+implementation
+
+{ Funkcja wykorzystując wartość zmiennej loadPath znajdującej się
+ w zmiennej rekordowej gry wypełnia tablice generation danym z podanego pliku.
+ Zwraca wartość true, gdy wystąpił błąd lub false jeśli wszystko zakończyło
+ się pomyślnie. W wywołaniu podajemy zmienna rekordową gry dla której
+ ma zostać wczytane pokolenie początkowe. }
+function loadGeneration(TLGen : PTLGen;path:string): boolean;
+var
+  map: TextFile; //uchwyt pliku
+  i,j,x,xMax,yMax:integer; // zmienne wykorzystywane w petlach krokowych
+  buff: string; // wczytuje tylko tyle znakow ile w tablicy jest kolumn od 1 do COL
+  error:boolean;
+  GenArray : TGenArray;
+begin
+  xMax:=0;
+  yMax:=0;
+
+  if FileExists(path) then begin //prowadzimy operacje na pliku tylko jesli
+                               //istnieje i mamy do niego dostep
+    AssignFile(map, path);
+    Reset(map); // otwieranie pliku w trybie do odczytu
+    Readln(map, buff);
+
+    while not eof(map) do {dopoki nie koniec pliku, wtedy odczytaj x,y}
+    begin
+      readLN(map,buff);
+      if Length(buff)> xMax then xMax:=Length(buff);
+      inc(yMax);
+    end;
+
+    TLGen^.Height:=yMax;
+    TLGen^.Width:=xMax;
+
+    SetLength(GenArray, xMax, yMax);
+
+    CloseFile(map);
+    Reset(map);
+
+    for i:=1 to yMax do begin
+        Readln(map, buff);
+        for j:=1 to xMax do begin
+          if buff[j] = 'x' then
+            GenArray[i,j] := true
+          else
+            GenArray[i,j] := false;
+        end;
+    end;
+    CloseFile(map); // zamkniecie pliku
+    error:=false; //zakonczenie bez bledu
+  end
+  else begin
+    writeln('Brak dostępu do pliku lub plik nie istnieje !');
+    error:=true; //zwrocenie bledu
+  end;
+  TLGen^.head^.GenArray:= GenArray;
+ loadGeneration:=error;
+end;
+///////end loadFirstGeneration();
+
+procedure getConfig(var LGames: TLGames;path:string);
+var
+  f : TextFile;
+  buff:string[1];
+  name,FPS:string;
+begin
+    if FileExists(path) then
+    AssignFile(f,path);
+    Reset(f);
+    while not eof(f) do
+    begin
+    Read(f, buff);
+    if ((buff <> '=' ) and (buff <> ''))then
+     begin
+          name:=name+buff;
+     end
+    else
+    case LowerCase(name) of
+       'setx' : begin
+              readln(f,name);
+              Delete(name, Length(name), 1);
+              LGames.sizeX:=StrToInt(name);
+              name:='';
+              end;
+       'sety' : begin
+              readln(f,name);
+              Delete(name, Length(name), 1);
+              LGames.sizeY:=StrToInt(name);
+              name:='';
+              end;
+       'setpatterns' : begin
+              readln(f,name);
+              read(f, buff);
+              name:='';
+              while buff <> ';' do
+              begin
+              //nazwa wzorca
+                while buff <> ':' do
+                  begin
+                   name:=name+buff;
+                   read(f,buff);
+                  end;
+              //ilosc klatek dla wzorca
+                  readln(f,FPS);
+               //jesli wzorzec istnieje to gra zostanie dodana
+               if FileExists(name) then  addGame(LGames, name, StrToInt(FPS));
+
+               //odczytanie pierwszego znaku nastepnej lini
+               read(f, buff);
+               name:='';
+              end;
+              readln(f,buff);
+             end;
+
+    end;
+end;
+end;
+
+end.
+

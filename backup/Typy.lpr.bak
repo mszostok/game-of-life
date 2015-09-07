@@ -1,0 +1,396 @@
+program Typy;
+
+uses
+  crt,SysUtils, Unit1, FileOperation;
+
+
+{Funkcja wyswietlajaca pomoc w przypadku podania nieprawidlowych parametrow
+ W wywolaniu podajemy powod wywolania procedury. Zwraca wartosc true po
+ wyswietleniu informacji }
+function help(reason:string): boolean;
+begin
+  writeln;
+  writeln(reason); //powod odwolania sie do procedury help(), np. zle wartosci parametrow
+  writeln('Prawidlowe uzycie programu: ');
+  writeln('Symulator.exe -i twoj_plik -o folder_zapisu -p liczba_pokolen');
+  writeln('Jesli problemy wystepuja dalej prosze zapoznac sie z dokumentacja programu.');
+  help:=true;
+end;
+////////end help();
+
+
+
+
+
+
+{ Funkcja countNeighbours zwraca liczbę żywych sąsiadów konkretnej komórki
+  w wywołaniu podajemy wspolrzedne komorki(x,y) oraz generacje dla ktorej
+  chcemy uzyskac ich liczbe}
+function countNeighbours(x,y:integer; oldGeneration:TBool):integer;
+var
+  i,j,numbers: integer;
+begin
+  numbers:=0; //wyzerowanie liczby sasiadow
+  //sprawdzenie wszystkich komorek dookola podanej komorki(x,y)
+  for i:= (x-1) to (x+1) do
+      if not( (i<1) or (i>ROW) ) then // sprawdzanie czy znienna 'i' nie wychodzi po za zakres
+                                     //tablicy( liczbe wierszy )
+        for j:=(y-1) to (y+1) do
+            begin
+            if not ( ((j<1) or (j>COL)) or ((i=x) and (j=y))) then // sprawdzenie czy nie wychodzimy
+            //poza zakres (liczba kolumn) oraz czy nie jestesmy w komorce(x,y) jesli nie to wykonujemy nastepne polecenie
+              if  oldGeneration[i,j] then inc(numbers); // jesli sasiad jest zywy to zwiekszamy zmienna o 1
+            end;
+  countNeighbours:=numbers; //zwrocenie ilosci sasiadow
+end;
+//////end countNeighbours()
+
+{ Funkcja sprawdza czy dana komorka bedzie zywa czy tez martwa w następnym pokoleniu.
+W wywołaniu podajemy wspołrzedne komorki (x,y) oraz generacje z ktorej ma nastapic przejscie.
+Zwroci wartosc true jesli komorka ma byc zywa lub false jesli ma byc martwa}
+function transition(x,y:integer; oldGeneration:TBool): Boolean;
+var
+  number:integer;
+begin
+  number:=countNeighbours(x,y, oldGeneration); //przypisanie do zmiennej number ilosc sasiadow komorki (x,y)
+   if ( ( number = 3 ) or (oldGeneration[x,y] and (number = 2)) ) then //jesli komorka ma trzech sasiadow
+    //to w kolejnym pokoleniu jest zywa, a jesli ma dwoch i w aktualnym pokoleniu jest zywa to  w nastepnym tez bedzie
+      transition:= true
+    else //wszystkie innie komorki sa w nastepny pokoleniu martwe
+      transition:= false;
+end;
+///////end transition()
+
+{Funkcja sprawdza czy pokolenie jest stabilne
+zwraca wartosc true jesli tak lub false jesli nie
+W wywolaniu podajemy zmienna rekordowa gry }
+function stabilityDecision(Life:TGameOfLife): boolean;
+var
+  i,j: Integer;
+begin
+ stabilityDecision:=true; // zalozenie ze dane pokolenie jest juz stabilne
+ //sprawdzenie zalozenia
+  for i:=1 to ROW do begin
+    for j:=1 to COL do
+      if not (Life.generation[i,j] = Life.oldGeneration[i,j]) then begin //jesli stany komorek w pokoleniu starym i akutalnym
+        stabilityDecision:=false;                                    //sa rozne to pokolenie nie jest stabilne
+        break; // przerwanie petli poniewaz wartosc juz sie nie zmieni
+        end;
+  if not(stabilityDecision) then break; //przerwanie drugiej petli
+  end;
+end;
+/////end stabilityDecision()
+
+{Procedura odpowiedzialna jest za tworzenie nastepnej populacji.
+W wywolaniu procedury podajemy zmienna rekordowa gry dla ktorego
+funkcja ma stworzyc nastepne pokolenie}
+procedure createNextGeneration(var Life:TGameOfLife);
+var
+  i,j:integer;
+begin
+Life.oldGeneration:=Life.generation; //przepisanie akutalnego pokolenia do tablicy OldGeneration
+//tworzenie nowego pokolenia
+for i:=1 to ROW do
+ for j:=1 to COL do
+   Life.generation[i,j] := transition(i,j,Life.oldGeneration);
+inc(Life.counter);
+end;
+///////end createNextGeneration()
+
+{Procedura wyswietla akutualne pokolenia w konsoli. W wywolaniu
+podajemy rekord gry ktory chcemy wyswietlic}
+procedure showGeneration(Life:TGameOfLife);
+var
+  i,j:integer;
+begin
+  for i:=1 to ROW do begin
+    for j:=1 to COL do
+    //sprawdzenie czy wartosci w komorkach generacji wczesniejszej i akutalnej sa rozne jesli tak
+    //to uaktualnia stan komorki
+      if not(Life.generation[i,j] = Life.oldGeneration[i,j]) then
+        if Life.generation[i,j] then begin //jesli komorka aktualnej generacji jest zywa
+            gotoxy(j,i+1);                  //to przechodzi w miejsce x,y
+            write(Life.alive);                 // i wypisuje stala Life.alive
+          end
+          else begin // wprzeciwnym wypadku
+            gotoxy(j,i+1); //przechodzi w miejsce x,y
+            write(' '); //i wypisuje puste pole
+          end;
+  end;
+end;
+///////end showGeneration();
+
+{Funkcja zwraca sciezke dostepu do pliku ze wzorcem
+ ktory wybierze uzytkownik z podanej listy}
+ function patternsMenu():String;
+ var
+   choice: Integer;
+   correct: Boolean;
+   default: String;
+ begin
+  clrscr;
+  writeln('Przyladowe wzory:');
+  writeln('1.Pulsar');
+  writeln('2.Blinker(swiatla uliczne)');
+  writeln('3.Glider(szybowiec)');
+  writeln('4.Toad(zabka)');
+  gotoxy(3,8);
+  repeat
+    gotoxy(WhereX+3,WhereY+1);
+    write('Podaj nr wzoru: ');
+    {$i-}
+    readln(choice);
+    if IOResult <> 0 then begin
+    writeln('Blad danych!');
+    writeln('Podaj cyfre od 1 do 4.');
+    correct:=false;
+    continue;
+    end;
+    {$i+}
+    correct:=true;
+    case choice of
+      1: default:='Patterns\Pulsar.life';
+      2: default:='Patterns\Blinker.life';
+      3: default:='Patterns\Glider.life';
+      4: default:='Patterns\Toad.life';
+      else begin
+        writeln('Niepoprawny wybor!');
+        correct:=false;
+      end;
+    end;
+  until correct;
+  patternsMenu:=default;
+ end;
+
+{Procedura odpowiedzialna jest za ustawienie wartosci poczatkowych gry.
+W wywolaniu podajemy rekord dla ktorego funkcja ma byc zrealizowana}
+procedure initGame(var Life:TGameOfLife);
+var
+  i,j:integer;
+begin
+  if loadFirstGeneration(Life) then begin
+    writeln('Zakonczenie programu');
+    ReadKey;
+    Halt(1);
+    end
+    else begin
+    //with dla każdego elementu wewnątrz dodaje przedrostek, w typ wypadku Life
+    with Life do
+    begin
+      counter:=0;
+      for i:=1 to row do
+       for j:=1 to col do
+        oldGeneration[i,j]:=false;
+      end;
+    end;
+end;
+////end initGame()
+
+{ Fukcja pobiera zmienna tekstowa i konwertuje do wartosci liczbowej
+  jesli zadanie sie powiedzie zwroci wartosc true w przeciwnym
+  wypadku false }
+function valueInteger(test:string): boolean;
+var
+  I,Code: integer;
+begin
+  {Val konwertuje wartość test do wartości liczbowej i zapisuje ja w zmiennej I,
+     która w naszym przypadku jest typu Integer. Jeśli konwersja sie nie powiedzie, wartość Code wskazuje miejsce,
+     w którym konwersja sie nie udala a wartosc I jest wtedy nieokreslona}
+  Val(test,I,Code);
+  if Code <>0 then
+    valueInteger:=false
+  else
+    valueInteger:=true;
+
+end;
+/////end valueInteger();
+
+{ Funkcja przypisuje zmiennym loadPath, dirName, iteration
+ wartosci parametrow uruchomieniowych jakie podal uzytkownik.
+ Funkcja zwraca nastepujace wartosci typu integer:
+ 0 – jesli zakonczyła sie pomyslnie
+ 1 – jesli uzytkownik podal bledną wartość iteracji
+ 2 – jesli uzytkownik uzyl blednej flagi
+W wywołaniu podajemy zmienna rekordową gry.
+}
+function assignParam(var Life:TGameOfLife):integer;
+var
+error,i:integer;
+flag:string;
+begin
+  error:=0;
+for i := 0 to ((ParamCount div 2)-1) do
+begin
+  flag:=ParamStr(((2*i)+1)); //flagi zawsze znajduja sie na nieparzystych miejsach (symulator.exe -i [wartosc] -p [wartosc] itd.)
+  case flag of
+    '-i': Life.loadPath:=ParamStr(((2*i)+2)); //jesli parametr rowny jest fladze to na nastepnym miejscu
+    '-o': Life.dirName:=ParamStr(((2*i)+2));    // znajduje sie jego wartosc
+    '-p': begin
+      if valueInteger(ParamStr(((2*i)+2))) then
+       Life.iteration:=StrToInt(ParamStr(((2*i)+2)))
+       else
+       error:=1;
+    end;
+    else
+    error:=2;
+  end;
+assignParam:=error;
+end;
+end;
+/////end assignParam()
+
+{Procedura realizuje tryb uzytkownika
+ktory wprowadzil dane przy wywołaniu programu }
+procedure userMode();
+var
+  Life1: TGameOfLife; //tworzenie noweg rekordu gry Life1
+begin
+  case assignParam(Life1) of
+    0: begin
+    initGame(Life1);
+    if not(dirExists(Life1.dirName)) then //jesli katalog podany przez uzytkownika nie istnieje zostanie utworzony
+      MkDir(Life1.dirName);
+    while (Life1.counter <= Life1.iteration) and not(stabilityDecision(Life1)) do begin
+      saveGeneration(Life1);
+      createNextGeneration(Life1);
+    end;
+    clrscr;
+    showGeneration(Life1);
+    writeln(Life1.counter,' <= liczba wygenerowanych pokolen.');
+    if stabilityDecision(Life1) then //jesli nastapilo opuszczenie petli ze wzgledu na stabilnosc nastepuje powiadomienie uzytkownika
+      writeln('Program zakonczyl sie przed czasem ze wzgledu na stablinosc nastepnych pokolen.')
+    else
+      write('Program zakonczyl sie prawidlowo.');
+    end;
+    1: begin
+    if help('Bledna ilosc pokolen!') then
+    halt(1); //zakonczenie programu z powodu bledu
+    end;
+    2: begin
+    if help('Uzyto blednych flag') then
+    halt(1); //zakonczenie programu z powodu bledu
+    end;
+  end;
+
+
+end;
+//////end userMode()
+{Procedura wyswietlajaca pierwszy ekran demonstarcji
+ -logo i nazwa programu
+ -menu opcji  }
+procedure firstIntro();
+var
+    key:char;
+begin
+  clrscr;
+  write('|_|0|_|':8);
+  writeln('Symulator Gry w zycie':25);
+  writeln('|_|_|0|':8);
+  writeln('|0|0|0|':8);
+  gotoxy(4,5);
+  textcolor(Black);
+  textbackground(White);
+  write('[ESC]');
+  gotoxy(4,7);
+  write('[Space]');
+  textcolor(LightGray);
+  textbackground(Black);
+  gotoxy(10,5); write('- wyjscie z programu.');
+  gotoxy(12,7); write(' - wyswietlenie przykladowej symulacji.');
+  repeat
+    key:=Readkey;
+    if key = #27 then
+    Halt(0);
+  until key=#32;
+end;
+/////end firstIntro()
+
+{Procedura wyswietlajac drugi ekran demonstracj
+ -informacje na temat zakonczonego programu
+ -oblsuga klawisz przejscia do nastepnej sekcji}
+procedure secondIntro();
+  var
+    key: char;
+begin
+  clrscr;
+  gotoxy(3,3);
+  writeln('Jesli w trakcie symulacji bedzisz chcial opuscic program');
+  gotoxy(3,4);
+  writeln('nacisnij dowolny klawisz.');
+  gotoxy(55,6);
+  write('[Space] -> Dalej ');
+  repeat
+      key:=Readkey;
+  until key=#32;
+end;
+/////end secondIntro()
+
+{Funkcja odpowiedzialna za pobranie
+od uzytkownika informacje na temat
+ilosc wyswietlanych klatek na sekunde
+zwraca ich ilosc}
+function userFPS():word;
+  var
+      frame: word;
+begin
+  clrscr;
+  repeat
+  write('Podaj ilosc klatek na sekunde: ');
+  {$i-} //Wylaczenie oslugi bledow dyskowych
+  readln(frame);
+  if (IOResult<>0) or (frame=0) then begin //jesli wystapil jakis blad
+  writeln('Blad danych!');  // powiadom uzytkownika
+  continue; //i wykonaj petle jeszcze raz
+  end;
+  {$i+} //wlaczenie obslugi bledow dyskowych
+  until (frame<>0);
+  userFPS:=frame;
+end;
+//////end userFPS()
+
+{Procedura wyswietla demontracyjna wersje programu}
+procedure demo();
+var
+  demo: TGameOfLife;
+  frame: word;
+begin
+ firstIntro; //wyswietla pierwszy ekran
+  demo.loadPath:=patternsMenu(); //przypisuje sciezke wzoru ktora wybral uzytkownik
+  initGame(demo); //ustawianie poczatkowych wartosci gry demo
+ secondIntro; //wyswietla drugi ekran
+ frame:=userFPS; // przypisuje ilosc klatek podanych przez uzytkownika
+  clrscr;
+  writeln('Pokolenie nr.: ');
+  while not(Keypressed) and not(stabilityDecision(demo)) do begin
+  gotoxy(15,1);
+  writeln(demo.counter);
+  showGeneration(demo);
+  createNextGeneration(demo);
+  delay(1000 div frame);
+  end;
+
+  if stabilityDecision(demo) then begin //jesli nastapilo przerwanie petli ze wzgledu na stabilnosc pokolen
+   gotoxy(1,24);              //nastepuje powiadomienie uzytkownika
+   writeln(demo.counter-1,' <= Pokolenie stabilne. Nacisnij klawisz zeby zakonczyc.');
+   readln;
+  end;
+end;
+
+
+
+begin
+cursoroff;
+if (ParamCount <> 6) and (ParamCount<>0)then begin //jesli liczba parametrow uruchomieniowych jest rozna od 6 lub 0
+  if help('Nieprawilowe parametry!') then  //to wyswietli pomoc
+  halt(1); //zakonczenie programu z powodu bledu
+end
+else if (ParamCount = 0) then begin// jesli liczba parametrow uruchomieniowych jest rowna 0 wtedy wykonuje
+  clrscr;
+  demo();                             //procedure demonstracyjna
+end
+else begin // jesli liczba parametrow jest rowna 6
+  clrscr;
+  userMode(); //to wykonuje procedure uzytkownika
+end;
+end.
+
