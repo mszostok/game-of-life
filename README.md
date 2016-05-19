@@ -12,12 +12,12 @@ Poniżej znajdują się screeny poszczególnych okien programu. **Po więcej inf
 
 _Informacje o załaowanych plikach._
 
-![](http://imgup.pl/di/JQR7/info-pliki.jpg)
+![Alt text](/img/loadedFile.jpg?raw=true "file")
 
 _Główne okno programu_
 
-![](http://imgup.pl/di/DZWH/glowne-okno.jpg)
+![Alt text](/img/mainWindow.jpg?raw=true "file")
 
 _Menu_
 
-![](http://imgup.pl/di/WGY5/menu.jpg)
+![Alt text](/img/menu.jpg?raw=true "file")
